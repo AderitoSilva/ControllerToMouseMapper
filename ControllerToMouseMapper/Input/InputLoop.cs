@@ -74,7 +74,7 @@ public sealed class InputLoop : IDisposable, IAsyncDisposable
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (_disposed || _disposing)
             return;
         _disposing = true;
 
