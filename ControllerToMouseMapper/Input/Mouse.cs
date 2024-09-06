@@ -62,7 +62,7 @@ public static class Mouse
         if (double.IsNaN(x) || double.IsInfinity(x))
             throw new ArgumentException($"'{x}' is not a valid value for '{nameof(x)}' parameter.", nameof(x));
         if (double.IsNaN(y) || double.IsInfinity(y))
-            throw new ArgumentException($"'{x}' is not a valid value for '{nameof(y)}' parameter.", nameof(y));
+            throw new ArgumentException($"'{y}' is not a valid value for '{nameof(y)}' parameter.", nameof(y));
 
         INPUT input = new()
         {
@@ -86,7 +86,7 @@ public static class Mouse
         if (double.IsNaN(x) || double.IsInfinity(x))
             throw new ArgumentException($"'{x}' is not a valid value for '{nameof(x)}' parameter.", nameof(x));
         if (double.IsNaN(y) || double.IsInfinity(y))
-            throw new ArgumentException($"'{x}' is not a valid value for '{nameof(y)}' parameter.", nameof(y));
+            throw new ArgumentException($"'{y}' is not a valid value for '{nameof(y)}' parameter.", nameof(y));
 
         if (x == 0 && y == 0)
             return;
