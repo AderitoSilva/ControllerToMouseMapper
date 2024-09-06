@@ -9,18 +9,17 @@ namespace ControllerToMouseMapper.Input;
 /// <see cref="InputLoop"/> iterates at a specified frequency and calls
 /// a provided callback <see cref="Action"/> on every iteration. This
 /// callback is called in a thread safe manner -- it is never called
-/// concurrently. However, it may be called on different threads each
-/// time. The callback is run in a thread from the thread pool.
+/// concurrently, and it's always called in the same thread.
+/// <see cref="InputLoop"/> uses it's own dedicated thread.
 /// </remarks>
-public sealed class InputLoop : IDisposable, IAsyncDisposable
+public sealed class InputLoop : IDisposable
 {
 
 
-    private readonly Action _onUpdate;
+    private readonly Action<TimeSpan> _onUpdate;
     private readonly InputLoopWatch _watch;
-    private readonly Timer _timer;
+    private readonly PreciseTimer _timer;
     private bool _disposed, _disposing;
-    private int _isUpdating;
 
 
     /// <summary>
@@ -28,7 +27,7 @@ public sealed class InputLoop : IDisposable, IAsyncDisposable
     /// that uses the specified callback for iterations and the specified
     /// number of iterations per second.
     /// </summary>
-    /// <param name="onUpdate"><see cref="Action"/> that is invoked
+    /// <param name="onUpdate">Callback that is invoked
     /// on every iteration of the input loop.</param>
     /// <param name="frequency">Optional. Number of desired iterations
     /// per second. The default is 60.</param>
@@ -37,24 +36,24 @@ public sealed class InputLoop : IDisposable, IAsyncDisposable
     /// implementation. The default value is <see langword="null"/>.</param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="onUpdate"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="frequency"/> is
+    /// <see cref="double.NaN"/>, <see cref="double.NegativeInfinity"/> or
+    /// <see cref="double.PositiveInfinity"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="frequency"/> is equal to or less than 0.</exception>
-    public InputLoop(Action onUpdate, int frequency = 60, InputLoopWatch? watch = null)
+    public InputLoop(Action<TimeSpan> onUpdate, double frequency = 60, InputLoopWatch? watch = null)
     {
         ArgumentNullException.ThrowIfNull(onUpdate);
+        if (double.IsNaN(frequency) || double.IsInfinity(frequency))
+            throw new ArgumentException(
+                $"'{frequency}' is not a valid value for the '{nameof(frequency)}' parameter",
+                nameof(frequency));
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(frequency);
 
         _onUpdate = onUpdate;
         _watch = watch ?? InputLoopWatch.GetDefault();
-        _timer = new(OnTick, null, 0, 1000 / frequency);
+        _timer = new(OnTick, 1000d / frequency);
     }
-
-
-    /// <summary>
-    /// Gets the time elapsed between the two most recent update operations.
-    /// This allows you to measure the most recent iteration time.
-    /// </summary>
-    public TimeSpan IterationTime { get; private set; }
 
 
     /// <inheritdoc/>
@@ -71,35 +70,25 @@ public sealed class InputLoop : IDisposable, IAsyncDisposable
     }
 
 
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
+    public void Start()
     {
-        if (_disposed || _disposing)
-            return;
-        _disposing = true;
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
-        await _timer.DisposeAsync();
-
-        _disposed = true;
-        _disposing = false;
+        _timer.Start();
     }
 
 
-    private void OnTick(object? state)
+    public void Stop()
     {
-        if (Interlocked.Exchange(ref _isUpdating, 1) == 0)
-        {
-            try
-            {
-                IterationTime = _watch.GetTime();
-                _onUpdate();
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _isUpdating, 0);
-            }
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
+        _timer.Stop();
+    }
+
+
+    private void OnTick()
+    {
+        _onUpdate(_watch.GetTime());
     }
 
 
