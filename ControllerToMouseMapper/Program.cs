@@ -117,6 +117,9 @@ gamepad.Buttons.B.Pressed += (_, _) => Keyboard.TapKey(KeyboardVirtualKey.Escape
 // thread safe access to the gamepad. The input loop guarantees that our callback
 // is always called safely. Thread safety here is crucial, because `XGamepad` is
 // not expected to be thread safe.
+// NOTE: `InputLoop` is only necessary because a console application doesn't have
+// a render loop. Most UI or game frameworks provide their own concept of loop
+// (usually a render loop), which you would use instead of `InputLoop`.
 using InputLoop inputLoop = new(time =>
 {
     // By updating the device manager, all its devices are also updated.
